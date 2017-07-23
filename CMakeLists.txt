@@ -2,13 +2,12 @@ project(asio)
 
 cmake_minimum_required(VERSION 2.8.11)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/asio/include)
+find_package(Threads)
 
 if(MSVC)
     set(ASIO_FLAGS -DASIO_SEPARATE_COMPILATION -DASIO_STANDALONE -D_WIN32_WINNT=0x0501 -DASIO_ENABLE_CANCELIO)
 else()
-    set(ASIO_FLAGS -DASIO_SEPARATE_COMPILATION -DASIO_STANDALONE -pthread -std=c++11)
-
+    set(ASIO_FLAGS -DASIO_SEPARATE_COMPILATION -DASIO_STANDALONE)
 endif()
 
 add_definitions(${ASIO_FLAGS})
@@ -17,7 +16,7 @@ add_library(asio
     ${CMAKE_CURRENT_SOURCE_DIR}/asio/src/asio.cpp
 )
 
-set_property(TARGET asio PROPERTY INTERFACE_COMPILE_OPTIONS ${ASIO_FLAGS})
+target_link_libraries(asio ${CMAKE_THREAD_LIBS_INIT})
 
 get_directory_property(HAS_PARENT_SCOPE PARENT_DIRECTORY)
 if(HAS_PARENT_SCOPE)
@@ -25,3 +24,8 @@ if(HAS_PARENT_SCOPE)
     set(ASIO_LIBRARIES asio PARENT_SCOPE)
 endif()
 
+target_compile_options(asio PUBLIC ${ASIO_FLAGS})
+if (NOT MSVC)
+    target_compile_options(asio PRIVATE -std=c++11)
+endif()
+target_include_directories(asio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/asio/include)
