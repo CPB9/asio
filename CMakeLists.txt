@@ -10,8 +10,6 @@ else()
     set(ASIO_FLAGS -DASIO_SEPARATE_COMPILATION -DASIO_STANDALONE)
 endif()
 
-add_definitions(${ASIO_FLAGS})
-
 add_library(asio
     ${CMAKE_CURRENT_SOURCE_DIR}/asio/src/asio.cpp
 )
@@ -28,4 +26,4 @@ target_compile_options(asio PUBLIC ${ASIO_FLAGS})
 if (NOT MSVC)
     target_compile_options(asio PRIVATE -std=c++11)
 endif()
-target_include_directories(asio PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/asio/include)
+target_include_directories(asio PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/asio/include)
