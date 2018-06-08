@@ -21,14 +21,12 @@ if target_machine.system() == 'windows'
   #args += '-DASIO_ENABLE_CANCELIO'
 endif
 
-inc = include_directories('asio/include')
-
 if get_option('separate_compilation')
   asio_lib = build_target('asio',
     sources: 'asio/src/asio.cpp',
     name_prefix: 'lib',
     dependencies: deps,
-    include_directories: inc,
+    include_directories: include_directories('asio/include'),
     cpp_args: args,
     target_type : libtype,
   )
@@ -38,7 +36,7 @@ endif
 
 asio_dep = declare_dependency(
   link_with: asio_lib,
-  include_directories: inc,
+  include_directories: include_directories('asio/include', is_system : true),
   dependencies: deps,
   compile_args: args,
 )
