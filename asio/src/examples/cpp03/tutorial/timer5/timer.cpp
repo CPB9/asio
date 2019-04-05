@@ -2,7 +2,7 @@
 // timer.cpp
 // ~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -11,21 +11,20 @@
 #include <iostream>
 #include <asio.hpp>
 #include <boost/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 class printer
 {
 public:
-  printer(asio::io_service& io)
-    : strand_(io),
-      timer1_(io, boost::posix_time::seconds(1)),
-      timer2_(io, boost::posix_time::seconds(1)),
+  printer(asio::io_context& io)
+    : strand_(asio::make_strand(io)),
+      timer1_(io, asio::chrono::seconds(1)),
+      timer2_(io, asio::chrono::seconds(1)),
       count_(0)
   {
-    timer1_.async_wait(asio::wrap(strand_,
+    timer1_.async_wait(asio::bind_executor(strand_,
           boost::bind(&printer::print1, this)));
 
-    timer2_.async_wait(asio::wrap(strand_,
+    timer2_.async_wait(asio::bind_executor(strand_,
           boost::bind(&printer::print2, this)));
   }
 
@@ -41,9 +40,9 @@ public:
       std::cout << "Timer 1: " << count_ << std::endl;
       ++count_;
 
-      timer1_.expires_at(timer1_.expires_at() + boost::posix_time::seconds(1));
+      timer1_.expires_at(timer1_.expiry() + asio::chrono::seconds(1));
 
-      timer1_.async_wait(asio::wrap(strand_,
+      timer1_.async_wait(asio::bind_executor(strand_,
             boost::bind(&printer::print1, this)));
     }
   }
@@ -55,25 +54,25 @@ public:
       std::cout << "Timer 2: " << count_ << std::endl;
       ++count_;
 
-      timer2_.expires_at(timer2_.expires_at() + boost::posix_time::seconds(1));
+      timer2_.expires_at(timer2_.expiry() + asio::chrono::seconds(1));
 
-      timer2_.async_wait(asio::wrap(strand_,
+      timer2_.async_wait(asio::bind_executor(strand_,
             boost::bind(&printer::print2, this)));
     }
   }
 
 private:
-  asio::io_service::strand strand_;
-  asio::deadline_timer timer1_;
-  asio::deadline_timer timer2_;
+  asio::strand<asio::io_context::executor_type> strand_;
+  asio::steady_timer timer1_;
+  asio::steady_timer timer2_;
   int count_;
 };
 
 int main()
 {
-  asio::io_service io;
+  asio::io_context io;
   printer p(io);
-  asio::thread t(boost::bind(&asio::io_service::run, &io));
+  asio::thread t(boost::bind(&asio::io_context::run, &io));
   io.run();
   t.join();
 

@@ -2,7 +2,7 @@
 // detail/thread_group.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -64,6 +64,12 @@ public:
     }
   }
 
+  // Test whether the group is empty.
+  bool empty() const
+  {
+    return first_ == 0;
+  }
+
 private:
   // Structure used to track a single thread in the group.
   struct item
@@ -75,7 +81,7 @@ private:
     {
     }
 
-    thread thread_;
+    asio::detail::thread thread_;
     item* next_;
   };
 

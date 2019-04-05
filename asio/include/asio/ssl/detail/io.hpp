@@ -2,7 +2,7 @@
 // ssl/detail/io.hpp
 // ~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,6 +31,7 @@ template <typename Stream, typename Operation>
 std::size_t io(Stream& next_layer, stream_core& core,
     const Operation& op, asio::error_code& ec)
 {
+  asio::error_code io_ec;
   std::size_t bytes_transferred = 0;
   do switch (op(core.engine_, ec, bytes_transferred))
   {
@@ -38,9 +39,13 @@ std::size_t io(Stream& next_layer, stream_core& core,
 
     // If the input buffer is empty then we need to read some more data from
     // the underlying transport.
-    if (asio::buffer_size(core.input_) == 0)
+    if (core.input_.size() == 0)
+    {
       core.input_ = asio::buffer(core.input_buffer_,
-          next_layer.read_some(core.input_buffer_, ec));
+          next_layer.read_some(core.input_buffer_, io_ec));
+      if (!ec)
+        ec = io_ec;
+    }
 
     // Pass the new input data to the engine.
     core.input_ = core.engine_.put_input(core.input_);
@@ -53,7 +58,9 @@ std::size_t io(Stream& next_layer, stream_core& core,
     // Get output data from the engine and write it to the underlying
     // transport.
     asio::write(next_layer,
-        core.engine_.get_output(core.output_buffer_), ec);
+        core.engine_.get_output(core.output_buffer_), io_ec);
+    if (!ec)
+      ec = io_ec;
 
     // Try the operation again.
     continue;
@@ -63,7 +70,9 @@ std::size_t io(Stream& next_layer, stream_core& core,
     // Get output data from the engine and write it to the underlying
     // transport.
     asio::write(next_layer,
-        core.engine_.get_output(core.output_buffer_), ec);
+        core.engine_.get_output(core.output_buffer_), io_ec);
+    if (!ec)
+      ec = io_ec;
 
     // Operation is complete. Return result to caller.
     core.engine_.map_error_code(ec);
@@ -114,7 +123,7 @@ public:
   io_op(io_op&& other)
     : next_layer_(other.next_layer_),
       core_(other.core_),
-      op_(other.op_),
+      op_(ASIO_MOVE_CAST(Operation)(other.op_)),
       start_(other.start_),
       want_(other.want_),
       ec_(other.ec_),
@@ -138,7 +147,7 @@ public:
 
           // If the input buffer already has data in it we can pass it to the
           // engine and then retry the operation immediately.
-          if (asio::buffer_size(core_.input_) != 0)
+          if (core_.input_.size() != 0)
           {
             core_.input_ = core_.engine_.put_input(core_.input_);
             continue;
@@ -201,7 +210,7 @@ public:
           // have to keep in mind that this function might be being called from
           // the async operation's initiating function. In this case we're not
           // allowed to call the handler directly. Instead, issue a zero-sized
-          // read so the handler runs "as-if" posted using io_service::post().
+          // read so the handler runs "as-if" posted using io_context::post().
           if (start)
           {
             next_layer_.async_read_some(
